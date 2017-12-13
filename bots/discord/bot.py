@@ -54,6 +54,7 @@ async def on_ready():
     for m in members:
         print(m.display_name)
         nick = m.display_name.replace(" ", "_") + "+"
+        print(nick)
         bridge_connection.register_user(nick, "discord", "bridge", "abcdefg")
         bridge_connection.join(nick, "#banana")
 @client.event
@@ -64,12 +65,13 @@ async def on_message(message):
     print(message.content)
     target = "#banana"
     nick = message.author.display_name.replace(" ", "_") + "+"
+    print(nick)
     bridge_connection.privmsg(nick, target, message.content)
 socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 config = configparser.ConfigParser()
-config.read(bot.conf)
+config.read("bot.conf")
 server = config["DEFAULT"]["host"]
-port = config["DEFAULT"]["port"]
+port = int(config["DEFAULT"]["port"])
 token = config["DEFAULT"]["discord_token"]
 socket.connect((server, port))
 bridge_connection = BridgeConnection(socket)
