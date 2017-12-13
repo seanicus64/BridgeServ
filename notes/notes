@@ -1,0 +1,45 @@
+nick collisions?
+    don't let the bot worry about it.  Simply pass on the formatted data to the server, and it will 
+    keep a databaes of nicks and edit the username if possible.
+nicks valid on discord but not on IRC
+    replace spaces with underscores?
+handling IRC errors (not syntax)
+    let the actual bridge service handle all these.  the bridge service
+    is to be trusted by the opers of the irc network
+        for example, a non-chanop tries to change the topic of a topiclocked channel.
+        what happens?
+            The bot should naively just send the command along
+            The service looks at the request and decides if it is valid.
+
+bans?
+    channel
+    server
+    hostname?
+associating discord channels with IRC channels
+username, hostname, real name fields
+user modes?
+respecting channel modes
+    it appears that sending a PRIVMSG to a +n channel is allowed 
+    when the PRIVMSG's origin is a server.  The server is the gatekeeper here.
+security
+    the bridge service must be trustworthy for the IRC network
+    share security certificates/passwords
+    SSL?
+    Same relationship between bots and service
+
+simple API?
+    There should be a coroutine-based API to talk to the service
+    something similar to discord.py's API, which is really easy
+    and straight forward.  However, it should play along with the
+    other co-routine based services.  How do we do that?
+
+general structure:
+[third party protocol] ---- [bot] --- [service] ----- [IRC server]
+
+The service is a bottleneck here.  It can accept as many bots of as many types
+as it wants.  The bots are responsible for getting the data from the protocol, 
+which could be ANYTHING--discord, skype, facebook, google chat, text messages,
+minecraft chat, another type of IRC server, anything at all--so long as the bot 
+creator is able to parse the data and put it into a JSON format accepted by the service.  
+The service then converts it to an IRC server message and propagates it through
+the network.

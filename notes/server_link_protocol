@@ -1,0 +1,30 @@
+This is how atheme services registers to the IRC network as a whole.
+If anyone is curious.
+I edited the real password out, obviously.
+
+
+
+[2017-11-30 06:11:42] irc_handle_connect(): connection to uplink established
+[2017-11-30 06:11:42] <- PASS server_1_password
+[2017-11-30 06:11:42] <- PROTOCTL NICKv2 VHP NICKIP UMODE2 SJOIN SJOIN2 SJ3 NOQUIT TKLEXT ESVID MLOCK
+[2017-11-30 06:11:42] <- PROTOCTL EAUTH=SERVICES.COM
+[2017-11-30 06:11:42] <- PROTOCTL SID=00A
+[2017-11-30 06:11:42] <- SERVER SERVICES.COM 1 :Atheme IRC Services
+[2017-11-30 06:11:42] <- :00A EOS
+[2017-11-30 06:11:42] <- PING :00A
+[2017-11-30 06:11:42] sharedheap_normalize_size(128): normalized=128
+[2017-11-30 06:11:42] -> :test_server_1.com NOTICE * :*** Looking up your hostname...
+[2017-11-30 06:11:42] -> :test_server_1.com NOTICE * :*** Found your hostname (cached)
+[2017-11-30 06:11:42] -> PASS :OUR_PASSWORD_HERE
+[2017-11-30 06:11:42] -> PROTOCTL NOQUIT NICKv2 SJOIN SJOIN2 UMODE2 VL SJ3 TKLEXT TKLEXT2 NICKIP ESVID
+[2017-11-30 06:11:42] -> PROTOCTL CHANMODES=beI,kLf,l,psmntirzMQNRTOVKDdGPZSCc PREFIX=(qaohv)~&@%+ NICKCHARS= SID=001 MLOCK TS=1512022302 EXTSWHOIS
+[2017-11-30 06:11:42] -> SERVER test_server_1.com 1 :U4000-Fhin6OoEM-001 ToP test server for discord bridge
+[2017-11-30 06:11:42] <- :00A UID ChanServ 1 1512022302 ChanServ services.int 00AAAAAAB * +ioS * * * :Channel Services
+[2017-11-30 06:11:42] <- :00A UID Global 1 1512022302 Global services.int 00AAAAAAC * +ioS * * * :Network Announcements
+[2017-11-30 06:11:42] <- :00A UID GroupServ 1 1512022302 GroupServ services.int 00AAAAAAD * +ioS * * * :Group Management Services
+[2017-11-30 06:11:42] <- :00A UID InfoServ 1 1512022302 InfoServ services.int 00AAAAAAE * +ioS * * * :Information Service
+[2017-11-30 06:11:42] <- :00A UID MemoServ 1 1512022302 MemoServ services.int 00AAAAAAF * +ioS * * * :Memo Services
+[2017-11-30 06:11:42] <- :00A UID NickServ 1 1512022302 NickServ services.int 00AAAAAAG * +ioS * * * :Nickname Services
+[2017-11-30 06:11:42] <- :00A UID OperServ 1 1512022302 OperServ services.int 00AAAAAAH * +ioS * * * :Operator Services
+[2017-11-30 06:11:42] <- :00A UID SaslServ 1 1512022302 SaslServ services.int 00AAAAAAI * +ioS * * * :SASL Authentication Agent
+[2017-11-30 06:11:42] <- :00A UID StatServ 1 1512022302 StatServ services.int 00AAAAAAJ * +ioS * * * :Statistics Services
