@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 from twisted.words.protocols.irc import IRC
 from twisted.protocols.basic import LineReceiver
-from twisted.internet import reactor
+from twisted.internet import reactor, defer
 from twisted.internet.protocol import ClientFactory, Factory
 from twisted.python import log
 import configparser
 import random
 import time
 import json
+import sys
 class ServicesProtocol(IRC):
     def __init__(self, factory, config):
         self.factory = factory
@@ -37,6 +38,27 @@ class ServicesProtocol(IRC):
         self.relay_join_user("hank2", "#banana")
         self.relay_privmsg("hank2", "#banana", "hello world!")
         self.relay_privmsg("hank2", "sean", "hello world!")
+        import random
+        self.relay_mode("#banana", "+o", ["sean"])
+
+        self.relay_mode("#banana", "+o", ["hank2"])
+        self.relay_topic("#banana", "mopic{}".format(random.randrange(10000)), "hank2")
+        self.relay_topic("#banana", "mopic{}".format(random.randrange(10000)), "sean")
+    def relay_mode(self, recipient, mode, args=None, sender=None):
+        to_send = ""
+        if sender:
+            to_send += ":{} ".format(sender)
+        to_send += "MODE {} {}".format(recipient, mode)
+        if args:
+            to_send += " :" + " ".join(args)
+        print(to_send)
+        self.sendLine(to_send)
+    def relay_topic(self, channel, topic=None, user=None):
+        """Changes the topic of a channel, or merely returns topic"""
+        if user:
+            self.sendLine(":{} TOPIC {} :{}".format(user, channel, topic))
+        else:
+            self.sendLine("TOPIC {} :{}".format(channel, topic))
     def relay_join_user(self, nick, channel):
         """Joins a user to a channel."""
         self.sendLine(":{} JOIN {}".format(nick, channel))
@@ -107,12 +129,7 @@ class IncomingProtocol(LineReceiver):
         print("there is a connection to port 5959")
     def dataReceived(self, data):
         data = data.decode("ascii")
-        
         for d in data.split("\n"):
-            print("@@@@@")
-            print(d)
-
-            print("#####")
             self.parse_line(d)
     def parse_line(self, data):
         try:data = json.loads(data)
@@ -142,25 +159,11 @@ class IncomingProtocol(LineReceiver):
 #            pass
         elif data["command"] == "privmsg":
             nick = data["nick"]
-#            nick = "hank2"
             destination = data["destination"]
             message = data["message"]
             self.services_factory.protocol.relay_privmsg(nick, destination, message)
             print("PRIVMSG: {}".format(message))
             print("testtesttest")
-#            pass
-        #print(json.loads(data.decode("utf-8")))
-
-
-        #string = json.loads(data.decode("utf-8"))
-#    def lineReceived(self, line):
-#        """takes in json data, then calls ServicesProtocl methods
-#        to relay messages to IRC."""
-        #print(line)
-        #print(repr(line))
-        #split = line.split()
-
-        #print(split)
 config = configparser.ConfigParser()
 config.read("bridge.conf")
 server = config["CONNECTION"]["server"]
@@ -169,8 +172,4 @@ port = int(config["CONNECTION"]["port"])
 factory = ServicesFactory(config["SERVER SETTINGS"])
 reactor.connectTCP(server, port, factory)
 reactor.listenTCP(5959, IncomingFactory(factory))
-#import sys
-
-#log.startLogging(open("bridge.log", "w"))
-#log.startLogging(sys.stdout)
 reactor.run()
