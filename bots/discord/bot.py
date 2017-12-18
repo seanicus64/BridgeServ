@@ -8,11 +8,18 @@ import configparser
 client = discord.Client()
 
 class BridgeConnection:
-    def __init__(self, socket):
+    def __init__(self, socket, bridge_pass):
         self.socket = socket
         self.receive = threading.Thread(target=self.get_data)
         self.receive.start()
-                                
+                            
+        self.authenticate(bridge_pass)
+    def authenticate(self, bridge_pass):
+        data = {}
+        data["command"] = "authenticate"
+        data["password"] = bridge_pass
+        data = json.dumps(data)
+        self.send(data)
     def get_data(self):
         """ recieves data from the bridge, converts it to usable commands"""
         while True:
@@ -72,7 +79,8 @@ config = configparser.ConfigParser()
 config.read("bot.conf")
 server = config["DEFAULT"]["host"]
 port = int(config["DEFAULT"]["port"])
+bridge_pass = config["DEFAULT"]["bridge_password"]
 token = config["DEFAULT"]["discord_token"]
 socket.connect((server, port))
-bridge_connection = BridgeConnection(socket)
+bridge_connection = BridgeConnection(socket, bridge_pass)
 client.run(token)

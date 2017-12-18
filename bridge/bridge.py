@@ -26,16 +26,21 @@ class ServicesProtocol(IRC):
         self.register()
     def register(self):
         """Registers this service as a server to the IRC network."""
+        print(dir(self))
         self.sendLine("PASS {}".format(self.factory.server_pass))
         self.sendLine("PROTOCTL NICKv2 VHP NICKIP UMODE2 SJOIN SJOIN2 SJ3 NOQUIT TKLEXT ESVID MLOCK")
         self.sendLine("PROTOCTL EAUTH={}".format(self.factory.name))
         self.sendLine("PROTOCTL SID={}".format(self.factory.sid))
         self.sendLine("SERVER {} 1 :{}".format(self.factory.name, self.factory.descr))
         self.sendLine(":{} EOS".format(self.factory.sid))
+        #self.sendLine("LIST")
         self.test()
     def test(self):
         self.relay_register_user("hank2", "hank", "DISCORD", "hank from discord")
+        self.relay_register_user("hank3", "hank", "DISCORD", "hank from discord")
         self.relay_join_user("hank2", "#banana")
+        self.relay_join_user("hank2", "#fdasfdas")
+        self.relay_join_user("hank3", "#fdasfdas")
         self.relay_privmsg("hank2", "#banana", "hello world!")
         self.relay_privmsg("hank2", "sean", "hello world!")
         import random
@@ -44,6 +49,12 @@ class ServicesProtocol(IRC):
         self.relay_mode("#banana", "+o", ["hank2"])
         self.relay_topic("#banana", "mopic{}".format(random.randrange(10000)), "hank2")
         self.relay_topic("#banana", "mopic{}".format(random.randrange(10000)), "sean")
+#        self.sendLine(":hank2 LINKS")
+#        self.sendLine(":{} TOPIC #banana".format(self.factory.name))
+#        self.sendLine(":hank2 LIST".format(self.factory.name))
+#        self.sendLine(":{} LIST".format(self.factory.name))
+#        self.sendLine("NAMES")
+        #self.sendLine("JOIN sean #banana2")
     def relay_mode(self, recipient, mode, args=None, sender=None):
         to_send = ""
         if sender:
@@ -71,16 +82,48 @@ class ServicesProtocol(IRC):
         current_time = int(time.time())
         uid = self.factory.get_uid()
         self.sendLine(":{} UID {} 0 {} {} {} {}{} 0 +ixw {} * :{}".format(self.factory.sid, nick, current_time, username, hostname, self.factory.sid, uid, self.factory.cloak, real_name))
-
+    def irc_SJOIN(self, prefix, params):
+        """Server join...joins users to channels implicitely when server connects."""
+        # time stamp, channame,  modes (excluding bans), list of chan members with @ and +'s
+        # ['1512443363', '#banana', '+t', '@00192DP0D 001RUNW0C ']
+        creation_date = params[0]
+        channel = params[1]
+        if len(params) == 4:
+            modes = params[2]
+            users = set(params[3].split())
+        else:
+            modes = ""
+            users = set(params[2].split())
+        if channel not in self.factory.channels.keys():
+            self.factory.channels[channel] = {
+                "creation_date": creation_date,
+                "modes": modes,
+                "users": users
+                }
+        else:
+            self.factory.channels[channel]["users"].update(users)
+        print(channel) 
+        print(self.factory.channels[channel])
+    def irc_PART(self, prefix, params):
+        """Handles users parting channels"""
+        channel = params[0]
+        message = params[1]
+        users = self.factory.channels[channel]["users"].copy()
+        for u in users:
+            stripped_user = u.strip("~&@%+")
+            if stripped_user == prefix:
+                self.factory.channels[channel]["users"].remove(u)
+        if len(self.factory.channels[channel]["users"]) == 0:
+            del self.factory.channels[channel]
     def irc_PING(self, prefix, params):
         """Sends a PONG to a received PING."""
         response = params[0]
         self.sendLine("PONG {}".format(response))
     def irc_unknown(self, prefix, command, params):
-        print(prefix, command, params)
+        message = "\033[31m{}\033[32m{} \033[33m {}\033[0m".format(prefix + " " if prefix else "", command, " ".join(params))
+        print(message)
 #        log.msg("{} {} {}".format(prefix, command, " ".join(params)))
     def irc_UID(self, prefix, params):
-        print("New user signed on: {}".format(params))
         nick = params[0]
         username = params[3]
         hostname = params[4]
@@ -103,6 +146,8 @@ class ServicesFactory(ClientFactory):
         self.used_nicks = set()
         self.uid_counter = 0
         self.users = set()
+#        self.channels = set()
+        self.channels = {}
     def get_uid(self):
         """Returns an unused uid."""
         # TODO: This is very hacky and prone to fault for async. Fix it!
@@ -117,14 +162,17 @@ class ServicesFactory(ClientFactory):
         self.protocol = protocol
         return protocol	
 class IncomingFactory(Factory):
-    def __init__(self, services_factory):
+    def __init__(self, services_factory, settings):
         self.services_factory = services_factory
+        self.settings = settings
     def buildProtocol(self, addr):
-        protocol = IncomingProtocol(self.services_factory)
-        return IncomingProtocol(self.services_factory)
+        protocol = IncomingProtocol(self.services_factory, self.settings)
+        return protocol
 class IncomingProtocol(LineReceiver):
-    def __init__(self, services_factory):
+    def __init__(self, services_factory, settings):
         self.services_factory = services_factory
+        self.settings = settings
+        self.is_authenticated = False
     def connectionMade(self):
         print("there is a connection to port 5959")
     def dataReceived(self, data):
@@ -132,38 +180,31 @@ class IncomingProtocol(LineReceiver):
         for d in data.split("\n"):
             self.parse_line(d)
     def parse_line(self, data):
-        try:data = json.loads(data)
-        except:
-            print("-----------")
-            print(data)
-            print("="*15)
+        try: data = json.loads(data)
+        except json.JSONDecodeError as e:
             return
-#        self.transport.send(bytes(data.encode("utf-8")))
-        self.sendLine(bytes(str(data).encode("utf-8")))
-        
+        if data["command"] == "authenticate" and not self.is_authenticated:
+            if data["password"] == self.settings["password"]:
+                self.is_authenticated = True
+            else:
+                self.transport.loseConnection()
+        if not self.is_authenticated:
+            return
         if data["command"] == "register":
             nick = data["nick"]
             username = data["username"]
             hostname = data["hostname"]
             realname = data["realname"]
-            print("REGISTERING USER")
-            #TODO: check if the nick is already used on the network.
-            # also use a Deferred to check if nick is legal or any other issues
-            # maybe even send back a nick that is legal
-
             self.services_factory.protocol.relay_register_user(nick, username, hostname, realname)
         elif data["command"] == "join":
             nick = data["nick"]
             channel = data["channel"]
             self.services_factory.protocol.relay_join_user(nick, channel)
-#            pass
         elif data["command"] == "privmsg":
             nick = data["nick"]
             destination = data["destination"]
             message = data["message"]
             self.services_factory.protocol.relay_privmsg(nick, destination, message)
-            print("PRIVMSG: {}".format(message))
-            print("testtesttest")
 config = configparser.ConfigParser()
 config.read("bridge.conf")
 server = config["CONNECTION"]["server"]
@@ -171,5 +212,6 @@ port = int(config["CONNECTION"]["port"])
 
 factory = ServicesFactory(config["SERVER SETTINGS"])
 reactor.connectTCP(server, port, factory)
-reactor.listenTCP(5959, IncomingFactory(factory))
+listen_factory = IncomingFactory(factory, config["LISTEN SETTINGS"])
+reactor.listenTCP(5959, listen_factory)
 reactor.run()
