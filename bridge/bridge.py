@@ -42,19 +42,13 @@ class ServicesProtocol(IRC):
         self.relay_join_user("hank2", "#fdasfdas")
         self.relay_join_user("hank3", "#fdasfdas")
         self.relay_privmsg("hank2", "#banana", "hello world!")
-        self.relay_privmsg("hank2", "sean", "hello world!")
+        #self.relay_privmsg("hank2", "sean", "hello world!")
         import random
-        self.relay_mode("#banana", "+o", ["sean"])
+        #self.relay_mode("#banana", "+o", ["sean"])
 
         self.relay_mode("#banana", "+o", ["hank2"])
         self.relay_topic("#banana", "mopic{}".format(random.randrange(10000)), "hank2")
         self.relay_topic("#banana", "mopic{}".format(random.randrange(10000)), "sean")
-#        self.sendLine(":hank2 LINKS")
-#        self.sendLine(":{} TOPIC #banana".format(self.factory.name))
-#        self.sendLine(":hank2 LIST".format(self.factory.name))
-#        self.sendLine(":{} LIST".format(self.factory.name))
-#        self.sendLine("NAMES")
-        #self.sendLine("JOIN sean #banana2")
     def relay_mode(self, recipient, mode, args=None, sender=None):
         to_send = ""
         if sender:
@@ -115,6 +109,14 @@ class ServicesProtocol(IRC):
                 self.factory.channels[channel]["users"].remove(u)
         if len(self.factory.channels[channel]["users"]) == 0:
             del self.factory.channels[channel]
+    def irc_QUIT(self, prefix, params):
+        message = params[0]
+        channels_joined_to = self.factory.channels_joined_to(prefix)
+        for channel in channels_joined_to:
+            self.irc_PART(prefix, [channel, message])
+        nick = self.factory.uids[prefix][0]
+        self.factory.used_nicks.remove(nick)
+        del self.factory.uids[prefix]
     def irc_PING(self, prefix, params):
         """Sends a PONG to a received PING."""
         response = params[0]
@@ -122,15 +124,17 @@ class ServicesProtocol(IRC):
     def irc_unknown(self, prefix, command, params):
         message = "\033[31m{}\033[32m{} \033[33m {}\033[0m".format(prefix + " " if prefix else "", command, " ".join(params))
         print(message)
-#        log.msg("{} {} {}".format(prefix, command, " ".join(params)))
     def irc_UID(self, prefix, params):
+        """Message that a user is newly registered."""
         nick = params[0]
         username = params[3]
         hostname = params[4]
         uid = params[5]
         real_name = params[11]
         self.factory.used_nicks.add(nick)
-        print(nick, username, hostname, uid, real_name)
+        self.factory.uids[uid] = [nick, username, hostname, real_name]
+        print("{}: {}!{}@{} :{}".format(uid, nick, username, hostname, real_name))
+
 class ServicesFactory(ClientFactory):
     def __init__(self, settings):
         self.settings = settings
@@ -142,18 +146,33 @@ class ServicesFactory(ClientFactory):
         self.descr = settings["description"]
         self.sid = settings["sid"]
         self.cloak = settings["cloak"]
-        self.uids = set()
+#        self.uids = set()
+        self.uids = dict()
         self.used_nicks = set()
         self.uid_counter = 0
         self.users = set()
-#        self.channels = set()
         self.channels = {}
+    def channels_joined_to(self, nick):
+        joined_to = []
+        print(nick)
+        for key, value in self.channels.items():
+            print(key)
+            for user in value["users"]:
+                print("{}\t{}\t{}".format(nick, key, user))
+                user = user.strip("~&@%+")
+                if user == nick:
+                    joined_to.append(key)
+                    break
+        return joined_to
     def get_uid(self):
         """Returns an unused uid."""
         # TODO: This is very hacky and prone to fault for async. Fix it!
         while True:
-            if self.uid_counter not in self.uids:
-                self.uids.add(self.uid_counter)
+            #if self.uid_counter not in self.uids:
+            if self.uid_counter not in self.uids.keys():
+                #self.uids.add(self.uid_counter)
+                #self.uids[self.uid_counter] = {}
+                
                 return str(self.uid_counter).zfill(6)
             self.uid_counter += 1
     def buildProtocol(self, addr):
@@ -173,6 +192,7 @@ class IncomingProtocol(LineReceiver):
         self.services_factory = services_factory
         self.settings = settings
         self.is_authenticated = False
+        self.nick_conversion = {}
     def connectionMade(self):
         print("there is a connection to port 5959")
     def dataReceived(self, data):
@@ -195,13 +215,17 @@ class IncomingProtocol(LineReceiver):
             username = data["username"]
             hostname = data["hostname"]
             realname = data["realname"]
-            self.services_factory.protocol.relay_register_user(nick, username, hostname, realname)
+            newnick = nick
+            if nick in self.services_factory.used_nicks:
+                newnick += "-"
+            self.nick_conversion[nick] = newnick
+            self.services_factory.protocol.relay_register_user(newnick, username, hostname, realname)
         elif data["command"] == "join":
-            nick = data["nick"]
+            nick = self.nick_conversion[data["nick"]]
             channel = data["channel"]
             self.services_factory.protocol.relay_join_user(nick, channel)
         elif data["command"] == "privmsg":
-            nick = data["nick"]
+            nick = self.nick_conversion[data["nick"]]
             destination = data["destination"]
             message = data["message"]
             self.services_factory.protocol.relay_privmsg(nick, destination, message)

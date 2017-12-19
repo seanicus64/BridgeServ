@@ -60,7 +60,7 @@ async def on_ready():
     members = client.get_all_members()
     for m in members:
         print(m.display_name)
-        nick = m.display_name.replace(" ", "_") + "|"
+        nick = m.display_name.replace(" ", "_") #+ "|"
         print(nick)
         bridge_connection.register_user(nick, "discord", "bridge", "abcdefg")
         bridge_connection.join(nick, "#banana")
@@ -71,7 +71,7 @@ async def on_message(message):
     print(message.author.display_name)
     print(message.content)
     target = "#banana"
-    nick = message.author.display_name.replace(" ", "_") + "|"
+    nick = message.author.display_name.replace(" ", "_")# + "|"
     print(nick)
     bridge_connection.privmsg(nick, target, message.content)
 socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
