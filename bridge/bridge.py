@@ -134,6 +134,19 @@ class ServicesProtocol(IRC):
         self.factory.used_nicks.add(nick)
         self.factory.uids[uid] = [nick, username, hostname, real_name]
         print("{}: {}!{}@{} :{}".format(uid, nick, username, hostname, real_name))
+    def irc_PRIVMSG(self, prefix, params):
+        print(prefix)
+        print(params)
+        data = {}
+        data["command"] = "privmsg"
+        data["user"] = prefix
+        data["recipient"] = params[0]
+        data["message"] = params[1]
+        data = json.dumps(data)
+        #data = data.encode("utf-8")
+        self.sendLine(data)
+        #self.sendLine(json.dumps(data).encode("utf-8"))
+
 
 class ServicesFactory(ClientFactory):
     def __init__(self, settings):
@@ -199,13 +212,18 @@ class IncomingProtocol(LineReceiver):
         data = data.decode("ascii")
         for d in data.split("\n"):
             self.parse_line(d)
+        self.sendLine(bytes("I GOT DATA".encode("utf-8")))
     def parse_line(self, data):
         try: data = json.loads(data)
         except json.JSONDecodeError as e:
+#            message = data.decode("utf-8")
+            message = data
+            self.services_factory.protocol.relay_privmsg("hank2", "#banana", message)
             return
         if data["command"] == "authenticate" and not self.is_authenticated:
             if data["password"] == self.settings["password"]:
                 self.is_authenticated = True
+                print("connection is accepted")
             else:
                 self.transport.loseConnection()
         if not self.is_authenticated:

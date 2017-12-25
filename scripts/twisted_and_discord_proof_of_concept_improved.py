@@ -17,7 +17,7 @@ from twisted.internet.protocol import ClientFactory
 from twisted.internet import defer, endpoints, task
 
 # This must be defined before all the coroutines are used.
-# client = discord.Client()
+client = discord.Client()
 
 class MyBot(irc.IRCClient):
     """IRC Client to an arbitrary server.  Sends and receives arbitary data."""

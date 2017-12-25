@@ -22,10 +22,21 @@ class BridgeConnection:
         self.send(data)
     def get_data(self):
         """ recieves data from the bridge, converts it to usable commands"""
+        print("hello")
+        i = 0
         while True:
+            i += 1
+            print(i)
             data = self.socket.recv(4096)
-            if data:
-                print(data)
+#            print(data)
+#            if not data:
+#                continue
+#            print(data)
+#            try:
+#                data = json.load(data.decode("utf-8"))
+#            except JSONDecodeError:
+#                continue
+#            print(data)
     def register_user(self, nick, username, hostname, realname):
         data = {}
         data["command"] = "register"
@@ -82,5 +93,6 @@ port = int(config["DEFAULT"]["port"])
 bridge_pass = config["DEFAULT"]["bridge_password"]
 token = config["DEFAULT"]["discord_token"]
 socket.connect((server, port))
+socket.setblocking(1)
 bridge_connection = BridgeConnection(socket, bridge_pass)
 client.run(token)
