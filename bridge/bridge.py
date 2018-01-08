@@ -33,7 +33,6 @@ class ServicesProtocol(IRC):
         self.sendLine("PROTOCTL SID={}".format(self.factory.sid))
         self.sendLine("SERVER {} 1 :{}".format(self.factory.name, self.factory.descr))
         self.sendLine(":{} EOS".format(self.factory.sid))
-        #self.sendLine("LIST")
         self.test()
     def test(self):
         self.relay_register_user("hank2", "hank", "DISCORD", "hank from discord")
@@ -214,6 +213,7 @@ class IncomingProtocol(LineReceiver):
             self.parse_line(d)
         self.sendLine(bytes("I GOT DATA".encode("utf-8")))
     def parse_line(self, data):
+        print(data)
         try: data = json.loads(data)
         except json.JSONDecodeError as e:
 #            message = data.decode("utf-8")
