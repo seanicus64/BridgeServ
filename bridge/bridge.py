@@ -41,10 +41,7 @@ class ServicesProtocol(IRC):
         self.relay_join_user("hank2", "#fdasfdas")
         self.relay_join_user("hank3", "#fdasfdas")
         self.relay_privmsg("hank2", "#banana", "hello world!")
-        #self.relay_privmsg("hank2", "sean", "hello world!")
         import random
-        #self.relay_mode("#banana", "+o", ["sean"])
-
         self.relay_mode("#banana", "+o", ["hank2"])
         self.relay_topic("#banana", "mopic{}".format(random.randrange(10000)), "hank2")
         self.relay_topic("#banana", "mopic{}".format(random.randrange(10000)), "sean")
@@ -66,6 +63,9 @@ class ServicesProtocol(IRC):
     def relay_join_user(self, nick, channel):
         """Joins a user to a channel."""
         self.sendLine(":{} JOIN {}".format(nick, channel))
+    def relay_quit(self, nick, message):
+        """Quits a user from the network."""
+        self.sendLine(":{} QUIT :{}".format(nick, message))
     def relay_privmsg(self, source, target, message):
         """Sends a message from a user to another user or channel."""
         self.sendLine(":{} PRIVMSG {} :{}".format(source, target, message))
@@ -75,8 +75,10 @@ class ServicesProtocol(IRC):
         current_time = int(time.time())
         uid = self.factory.get_uid()
         self.sendLine(":{} UID {} 0 {} {} {} {}{} 0 +ixw {} * :{}".format(self.factory.sid, nick, current_time, username, hostname, self.factory.sid, uid, self.factory.cloak, real_name))
+        self.factory.used_nicks.add(nick)
     def irc_SJOIN(self, prefix, params):
         """Server join...joins users to channels implicitely when server connects."""
+        print("SJOIN")
         # time stamp, channame,  modes (excluding bans), list of chan members with @ and +'s
         # ['1512443363', '#banana', '+t', '@00192DP0D 001RUNW0C ']
         creation_date = params[0]
@@ -99,6 +101,7 @@ class ServicesProtocol(IRC):
         print(self.factory.channels[channel])
     def irc_PART(self, prefix, params):
         """Handles users parting channels"""
+        print("PART")
         channel = params[0]
         message = params[1]
         users = self.factory.channels[channel]["users"].copy()
@@ -109,6 +112,7 @@ class ServicesProtocol(IRC):
         if len(self.factory.channels[channel]["users"]) == 0:
             del self.factory.channels[channel]
     def irc_QUIT(self, prefix, params):
+        print("QUIT")
         message = params[0]
         channels_joined_to = self.factory.channels_joined_to(prefix)
         for channel in channels_joined_to:
@@ -118,13 +122,16 @@ class ServicesProtocol(IRC):
         del self.factory.uids[prefix]
     def irc_PING(self, prefix, params):
         """Sends a PONG to a received PING."""
+        print("PING")
         response = params[0]
         self.sendLine("PONG {}".format(response))
     def irc_unknown(self, prefix, command, params):
+        print("UNKNOWN")
         message = "\033[31m{}\033[32m{} \033[33m {}\033[0m".format(prefix + " " if prefix else "", command, " ".join(params))
         print(message)
     def irc_UID(self, prefix, params):
         """Message that a user is newly registered."""
+        print("UID")
         nick = params[0]
         username = params[3]
         hostname = params[4]
@@ -134,6 +141,7 @@ class ServicesProtocol(IRC):
         self.factory.uids[uid] = [nick, username, hostname, real_name]
         print("{}: {}!{}@{} :{}".format(uid, nick, username, hostname, real_name))
     def irc_PRIVMSG(self, prefix, params):
+        print("PRIVMSG")
         print(prefix)
         print(params)
         data = {}
@@ -141,9 +149,15 @@ class ServicesProtocol(IRC):
         data["user"] = prefix
         data["recipient"] = params[0]
         data["message"] = params[1]
-        data = json.dumps(data)
+#        data = json.dumps(bytes(data).encode("utf-8"))
+        data = bytes(json.dumps(data).encode("utf-8"))
+#        print(listen_factory)
+#        print(listen_factory.protocol)
+        # not connected to relay bot
+        if not listen_factory.protocol: return
+        listen_factory.protocol.privmsg_to_bot(data)
         #data = data.encode("utf-8")
-        self.sendLine(data)
+        #self.sendLine(data)
         #self.sendLine(json.dumps(data).encode("utf-8"))
 
 
@@ -158,7 +172,6 @@ class ServicesFactory(ClientFactory):
         self.descr = settings["description"]
         self.sid = settings["sid"]
         self.cloak = settings["cloak"]
-#        self.uids = set()
         self.uids = dict()
         self.used_nicks = set()
         self.uid_counter = 0
@@ -197,8 +210,8 @@ class IncomingFactory(Factory):
         self.services_factory = services_factory
         self.settings = settings
     def buildProtocol(self, addr):
-        protocol = IncomingProtocol(self.services_factory, self.settings)
-        return protocol
+        self.protocol = IncomingProtocol(self.services_factory, self.settings)
+        return self.protocol
 class IncomingProtocol(LineReceiver):
     def __init__(self, services_factory, settings):
         self.services_factory = services_factory
@@ -206,19 +219,33 @@ class IncomingProtocol(LineReceiver):
         self.is_authenticated = False
         self.nick_conversion = {}
     def connectionMade(self):
+        """
+        Connection to the relay bot has been made.
+        """
         print("there is a connection to port 5959")
+    def connectionLost(self, reason):
+        """
+        Connection to the relay bot has been lost.
+        Send out QUITS for every user registered through this server.
+        """
+        
+        print("="* 30)
+        print(reason)
+        for u in self.services_factory.used_nicks:
+            self.services_factory.protocol.relay_quit(u, "bridge lost connection")
+
     def dataReceived(self, data):
         data = data.decode("ascii")
         for d in data.split("\n"):
             self.parse_line(d)
-        self.sendLine(bytes("I GOT DATA".encode("utf-8")))
+#        self.sendLine(bytes("I GOT DATA".encode("utf-8")))
     def parse_line(self, data):
         print(data)
         try: data = json.loads(data)
         except json.JSONDecodeError as e:
-#            message = data.decode("utf-8")
             message = data
             self.services_factory.protocol.relay_privmsg("hank2", "#banana", message)
+            print("JSON error")
             return
         if data["command"] == "authenticate" and not self.is_authenticated:
             if data["password"] == self.settings["password"]:
@@ -247,6 +274,12 @@ class IncomingProtocol(LineReceiver):
             destination = data["destination"]
             message = data["message"]
             self.services_factory.protocol.relay_privmsg(nick, destination, message)
+    def privmsg_to_bot(self, data):
+        print("--------")
+        print(data)
+        print("=========")
+        self.sendLine(data)
+        
 config = configparser.ConfigParser()
 config.read("bridge.conf")
 server = config["CONNECTION"]["server"]
