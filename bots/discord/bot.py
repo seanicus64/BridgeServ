@@ -32,9 +32,34 @@ class MyProtocol(LineReceiver):
         data = json.dumps(data).encode("utf-8")
         self.sendLine(data)
         print("connection made to bridge")
-        
     def lineReceived(self, line):
+        line = line.decode("utf-8")
+
         print("line received:", line)
+        try: data = json.loads(line)
+        except:
+            print("JSON LOAD ERROR")
+            print(line)
+            print("*"*40)
+            return
+#        client.send_message(self.factory.test_channel, data["message"])
+#        await client.send_message(self.factory.test_channel, "message")
+#        await client.send_message(self.factory.test_channel, data["message"])
+        #send(self.factory.test_channel, "message")
+#        reactor.callLater(.01, client.send_message, (self.factory.test_channel, "message434343"))
+        d = ensureDeferred(client.send_message(self.factory.test_channel, data["message123"]))
+        d.callback()
+        reactor.callLater(.01, print, ("fdas", "hello world"))
+        reactor.callLater(.01, client.send_message, (self.factory.test_channel, "hai"))
+        client.send_message(self.factory.test_channel, "test test")
+        print(client)
+        print("$$$$$$$$$$$")
+        if data["command"] == "privmsg":
+            print("GOT PRIVMSG", data["message"])
+            client.send_message("bot-test", data["message"])
+            #except: print("couldn't send it to channel")
+
+        
     def register_user(self, nick, user, host, real):
         data = {}
         data["command"] = "register"
@@ -68,6 +93,8 @@ class MyFactory(ClientFactory):
     def __init__(self, settings):
         self.protocol = None
         self.settings = settings
+        print(self.settings)
+        print(self.settings["DEFAULT"]["discord_channel"])
         self.users_to_nicks = {}
         self.users = {}
         self.synced = False
@@ -108,9 +135,11 @@ class MyFactory(ClientFactory):
         self.protocol = MyProtocol(self)
         return self.protocol
     def new_message(self, message):
+        print(message.content)
         author = message.author
         discord_id = message.author.id
-        nick = self.to_be_resolved[discord_id]
+        try: nick = self.to_be_resolved[discord_id]
+        except: return
         recipient = "#banana"
         self.protocol.privmsg(nick, recipient, message.content)
 
@@ -131,6 +160,15 @@ async def on_ready():
     print("we are connected to discord")
     my_factory.connected_to_discord(client)
     my_factory.sync_up()
+    print(client.get_all_channels())
+    print(list(client.get_all_channels()))
+    for c in list(client.get_all_channels()):
+        print(dir(c))
+        print(c.name)
+        if c.name == "bot-test":
+            my_factory.test_channel = c
+            #await client.send_message(my_factory.test_channel, "message1")
+            break
 
 @client.event
 async def on_message(message):
@@ -138,6 +176,14 @@ async def on_message(message):
     print(dir(message))
     print(message.author)
     my_factory.new_message(message)
+#    await client.send_message(my_factory.test_channel, "message2")
+@client.event
+async def on_member_join(member):
+    print(member)
+    print("joined!")
+@client.event
+async def on_member_leave(member):
+    print(member, "left!")
 #    my_factory.send_to_protocol(message.content)    
 # honestly not sure how to describe this but
 # just read this: http://discordpy.readthedocs.io/en/latest/migrating.html#running-the-client
