@@ -30,17 +30,24 @@ class ListenProtocol(protocol.Protocol):
     def dataReceived(self, data):
         """Receive and react to data to the port."""
         data = data.decode("ascii")
+        data = data.strip()
         lines = data.split("\n")
         for l in lines:
             self.parse_line(l)
     def parse_line(self, line):
         """Make sense of the data coming into the server,
         dispatch to other methods."""
+        print(line)
+        #print(bytes(line.decode()))
+        #if not line:
+        #    return
         try: obj = json.loads(line)
         except json.JSONDecodeError as e:
-            log.msg("JSON error")
+#            log.msg("JSON error: <{}>".format(bytes(line)))
+            log.msg("JSON error: {}".format(repr(line)))
             #TODO: inform client about this error.
             return
+
         protocol = self.factory.irc_factory.protocol
         if obj["command"] == "register":
             nick = obj["nick"]
@@ -148,8 +155,10 @@ class IRCProtocol(IRC):
         self.factory.add_new_user(params)
     def irc_SJOIN(self, prefix, params):
         """Responds to network telling us about what channels users are on."""
+        print(params)
         timestamp, channel = params[:2]
         # IF no modes are set, positions are different
+        print(timestamp)
         if len(params) == 3:
             users = params[2]
             modes = ""
@@ -179,7 +188,6 @@ class IRCProtocol(IRC):
             data = json.dumps(data)
             data += "\n"
             p.send(data)
-    
 class UserDict:
     def __init__(self):
         self.users = set()
@@ -200,7 +208,37 @@ class UserDict:
                 return False
         self.users.add(tuple(user))
         return True
+#TODO: is a channel handler really necessary?
+class Channel_Handler:
+    """
+        add
+
+
+    """
+    channels = {}
+    def __init__(self):
+        pass
+    def join_user(self, user, channel):
+        if channel not in self.channels.keys():
+            self.add_channel(channel)
         
+        #if 
+        pass
+    def part_user(self, user, channel):
+        pass
+    def add_channel(self, channel):
+        self.channels[channel] = {
+            "topic": "",
+            "topic_creator": None,
+            "topic_creation": 0,
+            "modes": [],
+            "bans": [],
+            "ops": [],
+            "users": []
+            }
+    def del_channel(self, channel):
+        pass
+    #def check
 class IRCFactory(ClientFactory):
     protocol = IRCProtocol
     uid_counter = 0
@@ -263,7 +301,6 @@ class IRCFactory(ClientFactory):
             if user in v[2]:
                 self.del_channel_user(k, user)
 
-        pass
     def get_uid(self):
         """Returns an unused uid."""
 #        while True:
