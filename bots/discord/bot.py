@@ -10,7 +10,7 @@ from twisted.internet.protocol import Protocol
 from twisted.internet.protocol import ClientFactory
 from twisted.internet import asyncioreactor
 from twisted.protocols.basic import LineReceiver
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import Deferred, ensureDeferred
 # For some reason, you must install an asyncioreactor before
 # you import reactor.
 myloop = asyncio.get_event_loop()
@@ -32,6 +32,14 @@ class MyProtocol(LineReceiver):
         data = json.dumps(data).encode("utf-8")
         self.sendLine(data)
         print("connection made to bridge")
+#        await client.send_message("Does this work?")
+        #self.test_d = ensureDeferred(self.test())
+#        self.test()
+    async def test(self):
+        print("TEST RAN")
+        print(client)
+        await client.send_message(self.factory.test_channel, "Does this work?")
+
     def lineReceived(self, line):
         line = line.decode("utf-8")
 
@@ -160,13 +168,16 @@ async def on_ready():
     print("we are connected to discord")
     my_factory.connected_to_discord(client)
     my_factory.sync_up()
-    print(client.get_all_channels())
-    print(list(client.get_all_channels()))
+#    print(client.get_all_channels())
+#    print(list(client.get_all_channels()))
     for c in list(client.get_all_channels()):
-        print(dir(c))
-        print(c.name)
+#        print(dir(c))
+#        print(c.name)
         if c.name == "bot-test":
+            print("\033[32m========================\033[0m")
             my_factory.test_channel = c
+#            my_factory.protocol.test_d.callback(5)
+            ensureDeferred(my_factory.protocol.test())
             #await client.send_message(my_factory.test_channel, "message1")
             break
 
