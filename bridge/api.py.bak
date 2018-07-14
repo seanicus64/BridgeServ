@@ -1,0 +1,18 @@
+#!/usr/bin/env python3
+import asyncio
+loop = asyncio.get_event_loop()
+class API:
+    def __init__(self, address, port):
+        self.address = address
+        self.port = port
+        self.future = asyncio.Future()
+        task1 = asyncio.ensure_future(self.connect_to_listener())
+        loop.run_until_complete(asyncio.wait((task1)))
+    async def connect_to_listener(self):
+        self.reader, self.writer = await asyncio.open_connection(self.address, self.port, loop = loop)
+
+        self.future.set_result((self.reader, self.writer))
+        return self.future
+my_api = API("127.0.0.1", 6667)
+#task1 = asyncio.ensure_future(my_api.connect_to_listener())
+#loop.run_until_complete(asyncio.wait((task1)))

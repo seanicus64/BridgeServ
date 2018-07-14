@@ -1,0 +1,23 @@
+13:42 -!- Irssi: Join to #unreal-support was synced in 1 secs
+13:45 -!- sean [~sean@Clk-30AA9E5.hsd1.nh.comcast.net] has quit [Ping timeout: 180 seconds]
+13:47 < sean_> crud, that was dumb of me. GLolol can you repaste that line about how to get the encoded ip address?
+13:47 <@Erik> <GLolol> the binary IP is created by running inet_pton() and then base64 encoding it
+13:47 < GLolol> <@Erik> <GLolol> the binary IP is created by running inet_pton() and then base64 encoding it
+13:47 < GLolol> ( ͡° ͜ʖ ͡°)
+13:47 < sean_> is that python?
+13:47 <@Erik> ಠ_ಠ 
+13:48 <@Jobe> python has socket.inet_pton()
+13:48 <@Jobe> but youll also need to select the correct address family constant to use too
+13:48 <@Jobe> which will be either socket.AF_INET or socket.AF_INET6
+13:48 <@Jobe> vor IPv4 and IPv6 respectively
+13:51 < sean_> base64.b64encode(socket.inet_pton(socket.AF_INET, "127.0.0.1"))
+13:51 < sean_> so fwAAAQ== is what id put into the ip argument?
+13:51 < GLolol> yep
+13:52 < GLolol> python 3, https://github.com/jlu5/PyLink/blob/master/protocols/unreal.py#L92-L106
+13:53 < sean_> and it works!  thank you guys!
+13:53 < sean_> although I'm curious why I didnt need that argument at all like 6 months ago
+13:53 <@Jobe> the question is, is the B64 Unreal expects the same as the B64 python produces :P
+13:53 <@Jobe> cause ive seen IRCds pad bits at the oposite end resulting in a differen B64 string
+13:54 < sean_> (or why it doesnt show up at all in the uid wiki page)
+
+

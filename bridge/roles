@@ -1,0 +1,31 @@
+bridgeserv:
+    handles translation from one channel to another
+    handles translation from one user to another
+
+for example the api will send a PRIVMSG to a channel
+api.privmsg("sean_discord", "#discord_main", "Hello world!")
+the api will send a json of that to the bridge, so the bridge receives
+    {"command": "privmsg", "user": "sean_discord", "message": "Hello world!", "destination": "#discord_main"}
+The bridge will then do a look-up and change a few of these around.  The message it sends to the network will be:
+    sean_IRC PRIVMSG #IRC_main :Hello world!
+
+UIDs:
+    001 00000 - BridgeServ
+    the rest will be for each bridged user
+User handler:
+    namedtuple
+    (uid, nick, user, host, real)
+    handle nick collisions
+user[uid][nick] = "sean"
+    check if uid is valid
+    check if nick is valid or used
+user[nick][realname] = "sean p"
+    dynamically figure out if index is nick or uid
+
+
+IRC network > Bridgeserv > API > client
+Bridgeserv handles all the irc server stuff, communicating with other servers, enforcing bans, keeping track of users, channels, etc.  Ht also talks to the API
+
+The API is a simple module for the client to communicate with bridgeserv
+
+the client handles whatever stuff is specific to the foreign service.

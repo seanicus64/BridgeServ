@@ -6,6 +6,8 @@ from twisted.internet import protocol
 from twisted.protocols.basic import LineReceiver
 from twisted.internet.defer import Deferred
 import json
+import string
+import userdict
 class ListenProtocol(protocol.Protocol):
     def __init__(self):
         """Listens to clients (typically bots) that want to 
@@ -16,6 +18,7 @@ class ListenProtocol(protocol.Protocol):
         Lastly, it informs the client of any important details
         it needs to know in order to successfully interact with
         IRC (i.e. legal nicks and chan names)"""
+        print("Listen protocol set up")
         pass
     def connectionMade(self):
         """When a client connects to the bridge, add it to the factory."""
@@ -25,7 +28,7 @@ class ListenProtocol(protocol.Protocol):
     def connectionLost(self, reason):
         """What happens when the connection is lost to the client."""
         print("Connection has been lost!")
-        protocol = self.factory.irc_factory.mass_quit()
+#        protocol = self.factory.irc_factory.mass_quit()
 
     def dataReceived(self, data):
         """Receive and react to data to the port."""
@@ -37,10 +40,6 @@ class ListenProtocol(protocol.Protocol):
     def parse_line(self, line):
         """Make sense of the data coming into the server,
         dispatch to other methods."""
-        print(line)
-        #print(bytes(line.decode()))
-        #if not line:
-        #    return
         try: obj = json.loads(line)
         except json.JSONDecodeError as e:
 #            log.msg("JSON error: <{}>".format(bytes(line)))
@@ -77,6 +76,7 @@ class ListenFactory(Factory):
         Doesn't really have to do much, since
         most of the logic is handled by the IRC factory."""
         self.service = service
+        print("Listen Factory set up")
     def buildProtocol(self, addr):
         self.my_protocol = self.protocol()
         self.my_protocol.factory = self
@@ -88,8 +88,11 @@ class ListenService(service.Service):
         service.Service.startService(self)
 
 class IRCProtocol(IRC):
+    def __init__(self):
+        print("IRC protocol has been set up")
     def connectionMade(self):
         """What happens when a connection is made to the IRC network."""
+        print("CONNECTION HAS BEEN MADE")
         self.factory.protocols.append(self)
         log.msg("Connection made to IRC network.")
         self.register()
@@ -108,21 +111,31 @@ class IRCProtocol(IRC):
         self.relay_join_user("hank3", "#banana")
         
 
-    def relay_register_user(self, nick, username, hostname, real_name):
+    def relay_register_user(self, nick, username, hostname, real_name, alien_id=None):
         """Registers a user to the IRC network."""
-        current_time = 0
         uid = self.factory.get_uid()
-        line = ":{} UID {} 0 {} {} {} {}{} 0 +ixw {} * :{}".format(
+        i = 0
+        newnick = nick 
+        while True:
+            try:
+                assert newnick not in self.factory.userdict
+                break
+            except:
+                newnick = nick + "_" + str(i)
+            i += 1
+        nick = newnick
+        if self.factory.userdict.islegal(nick):
+            self.factory.userdict.append(uid, nick, username, hostname, real_name, alien_id)
+        else:
+            nick = "temp_" + str(uid)
+            self.factory.userdict.append(uid, nick, username, hostname, real_name, alien_id)
+        current_time = 0
+        line = ":{} UID {} 0 {} {} {} {} 0 +ixw * {} * :{}".format(
             self.factory.sid, nick, current_time, username, 
-            hostname, self.factory.sid, uid, self.factory.cloak, 
+            hostname, uid, self.factory.cloak, 
             real_name)
         self.sendLine(line)
-        #params are the UID message after the command.  Last argument ends with : and 
-        # can contain multiple spaces.
-        parted = line.strip(":").partition(":")
-        params = parted[0].split()[2:]
-        params.append(parted[2])
-        self.factory.add_new_user(params)
+
     def quit_user(self, uid, message="Quit"):
         """Quits a user from the IRC network."""
         line = ":{} QUIT :{}".format(uid, message)
@@ -144,21 +157,35 @@ class IRCProtocol(IRC):
         """Prints out a NOTICE from the network."""
         notice = " ".join(params)
         print(prefix + " " + notice)
+    def irc_KILL(self, prefix, params):
+        del self.factory.userdict[params[0]]
     def irc_PING(self, prefix, params):
         """Responds back to a PING (a check if we're still connected to network."""
         self.sendLine("PONG {}".format(params[0]))
     def irc_UID(self, prefix, params):
         """Responds to the network telling us about a user."""
-        ick, hop, timestamp, username, hostname = params[0:5]
+        nick, hop, timestamp, username, hostname = params[0:5]
         uid, servicestamp, umodes, virthost, cloakedhost = params[5:10]
         ip, gecos = params[10:12]
-        self.factory.add_new_user(params)
+        try:
+            self.factory.userdict.append(uid, nick, username, hostname, gecos)
+        except:
+            print("{} IS ALREADY USED".format((uid, nick)))
+        for p in self.factory.listen_factory.protocols:
+            data = {}
+            data["command"] = "uid"
+            data["nick"] = nick
+            data["username"] = username
+            data["hostname"] = hostname
+            data["realname"] = gecos
+            data["uid"] = uid
+            data = json.dumps(data)
+            data += "\n"
+            p.send(data)
     def irc_SJOIN(self, prefix, params):
         """Responds to network telling us about what channels users are on."""
-        print(params)
         timestamp, channel = params[:2]
         # IF no modes are set, positions are different
-        print(timestamp)
         if len(params) == 3:
             users = params[2]
             modes = ""
@@ -172,6 +199,21 @@ class IRCProtocol(IRC):
             for u in users:
                 self.factory.add_channel_user(channel, u)
         self.factory.list_channels()
+        
+        for p in self.factory.listen_factory.protocols:
+            for u in users:
+                data = {}
+                data["command"] = "join"
+                data["nick"] = u
+                data["channel"] = channel
+                data = json.dumps(data)
+                data += "\n"
+                p.send(data)
+    def irc_QUIT(self, prefix, params):
+        del self.factory.userdict[prefix]
+        
+
+
     def irc_PART(self, prefix, params):
         """Handle the network telling us a user left a channel."""
         channel = params[0]
@@ -188,6 +230,54 @@ class IRCProtocol(IRC):
             data = json.dumps(data)
             data += "\n"
             p.send(data)
+    def irc_JOIN(self, prefix, params):
+        """Handle the network telling us about a join."""
+        for p in self.factory.listen_factory.protocols:
+            data = {}
+            data["command"] = "join"
+            data["nick"] = prefix
+            data["channel"] = params[0]
+            data = json.dumps(data)
+            data += "\n"
+            p.send(data)
+
+class UserDict2:
+    """
+    users = {(nick, user, host, real, uid)}
+    """
+    invalid_prefix = "changeme_"
+    invalid_id = 0
+
+    def check_valid_nick(self, nick):
+        try:
+            nick.encode("ascii")
+        except UnicodeEncodeError:
+            return False
+        valid_chars = string.ascii_letters + string.digits + "_-\[]{}^`|"
+
+        for char in nick:
+            if char not in valid_chars:
+                return False
+        if nick[0] in string.digits or nick[0]  == "-":
+            return False
+        return True
+
+        
+    def __init__(self):
+        self.users = set()
+
+        pass
+    def new_alien(self, alien_id, requested_nick, username,\
+            hostname, realname, uid):
+        if not check_valid_nick(requested_nick):
+            nick = invalid_prefix + str(invalid_id)
+            invalid_id += 1
+        else:
+            nick = requested_nick
+        self.users.add((alien_id, nick, username, hostname, realname, uid))
+        return nick
+
+
 class UserDict:
     def __init__(self):
         self.users = set()
@@ -201,7 +291,6 @@ class UserDict:
     def get_by_uid(self, uid):
         return self.get_by_position(uid, 5)
     def set_user(self, user):
-        print("trying to set user")
         if self.get_by_nick(user[0]) or \
             self.get_by_uid(user[5]):
                 print("failed because {}".format(user))
@@ -243,26 +332,28 @@ class IRCFactory(ClientFactory):
     protocol = IRCProtocol
     uid_counter = 0
     uids = dict()
-    user_dict = UserDict()
+    userdict = userdict.Users()
     channels = dict()
     protocol = None
     protocols = []
     def __init__(self, service):
+        print("IRC factory set up")
         self.service = service
         self.sid = self.service.sid
         self.cloak = self.service.cloak
     def buildProtocol(self, addr):
         self.protocol = IRCProtocol()
         self.protocol.factory = self
+        print("returned protocol")
         return self.protocol
-    def mass_quit(self):
-        self.list_channels()
-        for user in self.user_dict.users:
-            if user[5].startswith(self.sid):
-                print("quitting {}".format(user))
-                self.quit_user(user)
-        print("quit all the users")
-        self.list_channels()
+#    def mass_quit(self):
+#        self.list_channels()
+#        for user in self.user_dict.users:
+#            if user[5].startswith(self.sid):
+#                print("quitting {}".format(user))
+#                self.quit_user(user)
+#        print("quit all the users")
+#        self.list_channels()
     def check_channel(self, channel):
         if channel in self.channels.keys():
             return True
@@ -290,8 +381,10 @@ class IRCFactory(ClientFactory):
             self.channels[channel][2].remove(user_in_channel)
         if len(self.channels[channel][2]) == 0:
             del self.channels[channel]
-    def add_new_user(self, user):
-        self.user_dict.set_user(user)
+#    def add_new_user(self, user):
+#        self.user_dict.set_user(user)
+#    def add_new_alien(self, nick, user, host, real, uid):
+#        self.user_dict2.add
     def quit_user(self, user):
         uid = user[5]
         self.protocol.quit_user(uid)
@@ -303,17 +396,13 @@ class IRCFactory(ClientFactory):
 
     def get_uid(self):
         """Returns an unused uid."""
-#        while True:
-#            if self.uid_counter not in self.uids.keys():
-#                return str(self.uid_counter).zfill(6)
-#            self.uid_counter += 1
         uid = 0
         while True:
             uid_text = self.sid + str(uid).zfill(6)
-            if self.user_dict.get_by_uid(uid_text):
-                uid += 1 
+            if uid_text in self.userdict:
+                uid += 1
                 continue
-            return str(uid).zfill(6)
+            return uid_text
 
             
 
@@ -324,6 +413,24 @@ class IRCService(service.Service):
         self.descr = config["description"]
         self.sid = config["sid"]
         self.cloak = config["cloak"]
+        print("irc service set up")
     def startService(self):
         service.Service.startService(self)
 
+"""
+TODO
+links between channels
+links between users
+
+BridgeServ user
+    list bridges
+        (Discord1, reddit, gmail, Skype)
+    links <bridge>
+        (IRC#politics <-> Discord1#politics)
+    link_channel <IRC> <not-IRC>
+    info <bridge>
+nick translation (mention of IRC name (sean_D) could turn into discord mention on other side)
+    (obviously make this opt-in)
+
+
+"""

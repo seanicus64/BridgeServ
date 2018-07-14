@@ -1,5 +1,6 @@
 import sys
-sys.path.append("/home/topdev/organized/bridge")
+#sys.path.append("/home/topdev/organized/bridge")
+sys.path.append(".")
 from twisted.python import log
 from services import IRCService, IRCFactory, ListenFactory, ListenService
 from twisted.application import service, internet
@@ -29,3 +30,4 @@ listen_factory.irc_factory = irc_factory
 application = service.Application("IRC bridge")
 top_service.setServiceParent(application)
 log.msg("Everything loaded correctly")
+print(log)

@@ -1,0 +1,34 @@
+connect to IRC network through 6667
+activate modules for other things
+module:
+    discord
+    facebook
+    skype
+    etc, etc
+    should I even do this?
+
+API for IRC interface
+    work for completely different IRCDs, even generic 1459
+    import bridge
+    service = bridge.service
+    service.login(password)
+    service.add_channel()
+    service.add_user()
+    service.send_priv()
+    etc
+
+    service.channels()
+    for c in service.channels():
+        print(c.users())
+    for m in service.get_messages():
+        (maybe it should get_messages() anyway?
+
+    bridge should have ability to ban users from using reserved patterns in nicks
+        i.e. (only users from bridge DISCORD 1 can use a nick ending in "_D")
+
+################
+my_discord_bot.py
+import api
+import discord
+irc_service = api.login(password)
+
