@@ -1,7 +1,0 @@
-This program connects to a discord server and relays messages to our bridge, 
-which will then be relayed to the rest of the IRC network.
-
-Copy over example.conf to bot.conf and change the settings.
-To connect to discord, you need to make a bot, set it to be able to join server, and 
-get a discord token.
-
