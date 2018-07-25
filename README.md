@@ -56,12 +56,14 @@ Running
 ----------------
 
 Rehash UnrealIRCD.  Navigate to your unrealircd installation directory and run:
+
     ./unrealircd rehash
 
 Next start up BridgeServ.  In your BridgeServ directory:
+
     ./quickrun.sh
 
-BridgeServ should now be up and running.  It won't actually *do* much though until you run a client such as BridgeDiscord
+BridgeServ should now be up and running.  It won't actually *do* much though until you run a client such as BridgeDiscord.
 
 
 
