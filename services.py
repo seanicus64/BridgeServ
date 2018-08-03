@@ -323,7 +323,7 @@ class IRCProtocol(IRC):
             data["username"] = username
             data["hostname"] = hostname
             data["realname"] = gecos
-            p.send(data)
+            p.send_event(data)
     def irc_SJOIN(self, prefix, params):
         """Responds to network telling us about what channels users are on."""
         timestamp, channel = params[:2]
@@ -357,7 +357,7 @@ class IRCProtocol(IRC):
             data["event"] = "sjoin"
             data["nicks"] = [u.nick for u in chan_users]
             data["channel"] = channel
-            p.send(data)
+            p.send_event(data)
     def irc_QUIT(self, prefix, params):
         #TODO: send info to client
         del self.factory.userdict[prefix]
@@ -393,7 +393,7 @@ class IRCProtocol(IRC):
             data["command"] = "join"
             data["nick"] = prefix
             data["channel"] = params[0]
-            p.send(data)
+            p.send_event(data)
 
 class IRCFactory(ClientFactory):
     protocol = IRCProtocol
