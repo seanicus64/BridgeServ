@@ -109,8 +109,8 @@ class ListenProtocol(protocol.Protocol):
                 newnick = nick + "_" + str(i)
             i += 1
         nick = newnick
-        if not self.factory.irc_factory.userdict.islegal(nick):
-            nick = "temp_" + str(uid)
+#        if not self.factory.irc_factory.userdict.islegal(nick):
+#            nick = "temp_" + str(uid)
         link_id = protocol.factory.get_link_id()
         self.factory.irc_factory.userdict.append(uid, nick, username, hostname, realname, link_id)
         protocol.relay_register_user(uid, nick, username, hostname, realname)
@@ -293,6 +293,7 @@ class IRCProtocol(IRC):
     # so it takes the IRC commands from the network and relays it BACK to the client
     def irc_EOS(self, prefix, params):
         #TODO: probably shouldnt allow anything until finished synching
+        print("The chan dict is")
         print(self.factory.chandict)
     def irc_unknown(self, prefix, command, params):
         print("Unknown command: \033[31m{}\033[32m {}\033[33m {}\033[0m".format(prefix, command, " ".join(params)))
@@ -402,28 +403,19 @@ class IRCFactory(ClientFactory):
     uids = dict()
     userdict = userdict.Users()
     chandict = channeldict.Channels()
-    links = [
-        ("announcements", "#announcements"),
-        ("general", "#general"),
-        ("top", "#top"),
-        ("meme-central-station", "#meme-central-station"),
-        ("music", "#music"),
-        ("art", "#art"),
-        ("pln", "#pln"),
-        ("politics", "#politics"),
-        ("fuzzies", "#fuzzies"),
-        ("gaming", "#gaming"),
-        ("bot-test", "#bot-test")
-        ]
-    for e, l in enumerate(links):
-        channel = channeldict.Channel(l[1], l[0], e)
-        chandict._channels.append(channel)
     protocol = None
     protocols = []
     def __init__(self, service):
         self.service = service
         self.sid = self.service.sid
         self.cloak = self.service.cloak
+
+        # Set up the channel links for each bridge we will have connected
+        self.link_sections = self.service.link_sections
+        for bridge in self.service.link_sections:
+            for e, l in enumerate(bridge):
+                channel = channeldict.Channel(bridge[l], l, e)
+                self.chandict._channels.append(channel)
         log.msg("IRC factory set up.")
     def get_link_id(self):
         self.link_id += 1
@@ -447,12 +439,13 @@ class IRCFactory(ClientFactory):
             
 
 class IRCService(service.Service):
-    def __init__(self, config):
+    def __init__(self, config, link_sections):
         self.password = config["password"]
         self.name = config["name"]
         self.descr = config["description"]
         self.sid = config["sid"]
         self.cloak = config["cloak"]
+        self.link_sections = link_sections
         log.msg("IRC service set up.")
     def startService(self):
         service.Service.startService(self)

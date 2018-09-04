@@ -5,12 +5,18 @@ from services import IRCService, IRCFactory, ListenFactory, ListenService
 from twisted.application import service, internet
 import configparser
 
-config = configparser.ConfigParser()
+# get rid of "#" as a comment in the config file, because that will 
+# probably be a very common one.
+config = configparser.ConfigParser(comment_prefixes=(";"))
 config.read("bridge.conf")
 IRC_config = config["SERVER SETTINGS"]
+_sections = list(filter(lambda section: 
+            section.partition(" ")[0].lower() == "links", 
+            config.sections()))
+sections = [config[s] for s in _sections]
 
 top_service = service.MultiService()
-IRC_service = IRCService(IRC_config)
+IRC_service = IRCService(IRC_config, sections)
 IRC_service.setServiceParent(top_service)
 
 irc_factory = IRCFactory(IRC_service)
