@@ -18,7 +18,7 @@ Prerequisites
 --------------------------------
 * Configured and running UnrealIRCD server using 4.0.16 or greater.
 * Twisted 18.4.0 or higher
-* (Optional) a client using [BridgeAPI](https://github.com/seanicus64/BridgeAPI) such as [BridgeDiscord](https://github.com/seanicus64/BridgeAPI).
+* (Optional) a client using [BridgeAPI](https://github.com/seanicus64/BridgeAPI) such as [BridgeDiscord](https://github.com/seanicus64/BridgeDiscord).
 
 BridgeServ Configuration
 ------------
