@@ -122,8 +122,12 @@ class ListenProtocol(protocol.Protocol):
         user = obj["user"]
         message = obj["message"]
         for channel in self.factory.irc_factory.chandict:
+            print("handle_quit: {}".format(channel.name))
+            print(" ".join([user.nick for user in channel.users]))
             for u in channel.users:
+                
                 if u == user:
+                    print("handle_quit: removing {} from {}".format(user, channel.name))
                     channel.part(u)
         #TODO: delete user
         data = obj.copy()
@@ -131,6 +135,8 @@ class ListenProtocol(protocol.Protocol):
         self.send_response(data)
 
     def handle_get_users(self, obj, protocol):
+        print("\033[35" + ("+"*40) + "\033[0m")
+        print("GETTING ALL USERS")
         all_users = []
         for user in self.factory.irc_factory.userdict:
             u = (user.nick, user.user, user.host, user.real, user.link_id)
@@ -164,6 +170,10 @@ class ListenProtocol(protocol.Protocol):
         nick = user.nick
 
         can_join = True
+        if can_join:
+            print("{} can join {}".format(nick, channel.name))
+        else:
+            print("{} can not join {}".format(nick, channel))
 
         protocol.relay_join_user(nick, channel.name)
         data = obj.copy()
@@ -291,6 +301,11 @@ class IRCProtocol(IRC):
 
     # this irc_ block's methods are what is run when a command comes from the IRC side.
     # so it takes the IRC commands from the network and relays it BACK to the client
+    def irc_NICK(self, prefix, params):
+        try:
+            self.factory.userdict[prefix].nick = params[0]
+        except:
+            pass
     def irc_EOS(self, prefix, params):
         #TODO: probably shouldnt allow anything until finished synching
         print("The chan dict is")
@@ -309,14 +324,21 @@ class IRCProtocol(IRC):
         self.sendLine("PONG {}".format(params[0]))
     def irc_UID(self, prefix, params):
         """Responds to the network telling us about a user."""
+        print("\033[32m" + ("="*50) + "\033[0m")
+
+        print(prefix, params)
         nick, hop, timestamp, username, hostname = params[0:5]
         uid, servicestamp, umodes, virthost, cloakedhost = params[5:10]
         ip, gecos = params[10:12]
+        print("BEFORE")
+        print(self.factory.userdict)
         try:
             self.factory.userdict.append(uid, nick, username, hostname, gecos)
         except:
             print("{} IS ALREADY USED".format((uid, nick)))
             print(self.factory.userdict)
+        print("AFTER")
+        print(self.factory.userdict)
         for p in self.factory.listen_factory.protocols:
             data = {}
             data["event"] = "uid"
@@ -351,6 +373,7 @@ class IRCProtocol(IRC):
             if uid in self.factory.userdict:
                 user = self.factory.userdict[uid]
                 chan_users.append(user)
+                print("chan_obj.join({})".format(user))
                 chan_obj.join(user)
         
         for p in self.factory.listen_factory.protocols:

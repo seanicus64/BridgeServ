@@ -2,6 +2,7 @@
 import string
 class User(object):
     def __init__(self, uid, nick, user, host, real, link_id = None, bridge_id = 0):
+        #link_id is the unique identifier for the alien user
         self._user_list = None
         self.uid = uid
         self.nick = nick

@@ -1,0 +1,37 @@
+Hard coded channel links:
+    moved these to bridge.conf  However, I don't want only the administrator of bridgeserv to decide what channels are linked to what other chats across the divide.  That should be the responsibility of the operator of the bridge itself.  Ideally the operator of the bridge should be able to talk to BridgeServ and add and delete links themselves.  Channel operators are irrelevant to the process, but of course they have the ability to block users from a host, making it easy to block bridgeserv connections.
+
+Issue - speaking of which, the hostname of a connection shouldn't be controlled by the bridge operator, but by the bridgeserv administrator.
+Issue - if there are multiple "bridges", what's defining them?  There should be nothing stopping a user from Bridge1 from using the same id as a user from Bridge2.  Perhaps we should build a specific Bridge object.  
+
+Config Files - Unnecessary Extra Installation step
+    modify the config files to have a flag in it.
+    This is a great and elegant idea, but I'm not going to do it because I test on the same codebase I use, so juggling this is needless work
+
+Prereqs -- added links to BridgeAPI and discord.py to the README for bridgediscord.  Also added links to bridgeapi and bridgediscord to the readme for bridgeserv
+
+"super() requires 1 argument, zero given".  This was because you used the wrong version of python.  Should work fine for python3.
+
+"Bot does not detect its own nick".  I still don't understand what the actual issue is here.
+
+Murder on nick collisions:
+    It took a whilke to replicate this one.  This is one way it can happen:
+        * Everything is off
+        * turn on unrealircd
+        * go on irssi, go to #bot-test, our name will be "test"
+        * start up bridge
+        * renick to "sean", who will be joining us from discord
+        * ./disc.py
+        * irssi user will be kicked off
+    This is because the program doesnt take into account renicks, so the discord bridge isnt getting an accurate list of nicks.
+
+    To fix this, I simply added irc_NICK and change the nick on userdict
+
+Window is full of output saying unknown command
+    ./quickrun is just a small convenience script for me that I'm using for debugging. Running this:
+        twistd --nodaemon --python bridge.py
+    shows all that output.  But running this:
+        twistd --python bridge.py
+    shows no output.  So for development, it is on debugging mode.  irc_unknown is especialyl important because it will tell me when I see a new IRC message I may need to account for.  I wrote that function but the actual twisted framework allows for it.  So for now, I won't change it beause it's too useful.
+
+

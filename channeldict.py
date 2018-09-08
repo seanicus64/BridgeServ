@@ -12,8 +12,17 @@ class Channel:
         self.link_id = link_id
 
     def join(self, user):
+        print("\033[43m" + "-"*30 + "\033[0m")
+        print("{} joining {}".format(user, self.name))
+        #TODO: WHAT THE HECK?!?!?!
+        # Why is the user already added before I add them?!
+        # except, for some reason, the first channel?
+        print("users: {}".format([ u.nick for u in self.users]))
         if user not in self.users:
+            print("not in {} users".format(self.name))
             self.users.append(user)
+        else:
+            print("in {} users".format(self.name))
     def part(self, user):
         if user in self.users:
             self.users.remove(user)
