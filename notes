@@ -35,3 +35,4 @@ Window is full of output saying unknown command
     shows no output.  So for development, it is on debugging mode.  irc_unknown is especialyl important because it will tell me when I see a new IRC message I may need to account for.  I wrote that function but the actual twisted framework allows for it.  So for now, I won't change it beause it's too useful.
 
 
+test
