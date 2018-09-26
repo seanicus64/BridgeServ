@@ -385,7 +385,7 @@ class IRCProtocol(IRC):
                 if ch.name == channel:
                     channel_link_id = ch.link_id
                     break
-            if not channel_link_id:
+            if channel_link_id is not None:
                 return
             data["channel_link_id"] = channel_link_id
             data["recipient"] = params[0]

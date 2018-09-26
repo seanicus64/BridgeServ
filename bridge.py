@@ -19,14 +19,19 @@ top_service = service.MultiService()
 IRC_service = IRCService(IRC_config, sections)
 IRC_service.setServiceParent(top_service)
 
+connection_config = config["CONNECTION"]
+irc_server = connection_config["irc_server"]
+irc_port = int(connection_config["irc_port"])
 irc_factory = IRCFactory(IRC_service)
-tcp_service = internet.TCPClient("localhost", 6667, irc_factory)
+tcp_service = internet.TCPClient(irc_server, irc_port, irc_factory)
 tcp_service.setServiceParent(top_service)
 
+bridge_server = connection_config["bridge_server"]
+bridge_port = int(connection_config["bridge_port"])
 listen_service = ListenService()
 listen_service.setServiceParent(top_service)
 listen_factory = ListenFactory(listen_service)
-listen_tcp_service = internet.TCPServer(5959, listen_factory, interface = "localhost")
+listen_tcp_service = internet.TCPServer(bridge_port, listen_factory, interface = bridge_server)
 listen_tcp_service.setServiceParent(top_service)
 
 irc_factory.listen_factory = listen_factory
