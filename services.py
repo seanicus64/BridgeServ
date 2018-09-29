@@ -378,25 +378,25 @@ class IRCProtocol(IRC):
         raise Exception("error")
         #TODO: handle user PRIVMSGs
         print("PRIVMSG")
-#        for p in self.factory.listen_factory.protocols:
-#            data = {}
-#            data["type"] = "event"
-#            data["event"] = "privmsg"
-#            data["nick"] = prefix
-#            channel = params[0] 
-#            channel_link_id = None
-#            for ch in self.factory.chandict:
-#                if ch.name == channel:
-#                    channel_link_id = ch.link_id
-#                    break
-#            if channel_link_id is not None:
-#                return
-#            data["channel_link_id"] = channel_link_id
-#            data["recipient"] = params[0]
-#            data["message"] = params[1]
-#            print("PRIVMSG detected: {} {} {}".format(prefix, channel, params[1]))
-#            print(data)
-#            p.send_event(data)
+        for p in self.factory.listen_factory.protocols:
+            data = {}
+            data["type"] = "event"
+            data["event"] = "privmsg"
+            data["nick"] = prefix
+            channel = params[0] 
+            channel_link_id = None
+            for ch in self.factory.chandict:
+                if ch.name == channel:
+                    channel_link_id = ch.link_id
+                    break
+            if channel_link_id is not None:
+                return
+            data["channel_link_id"] = channel_link_id
+            data["recipient"] = params[0]
+            data["message"] = params[1]
+            print("PRIVMSG detected: {} {} {}".format(prefix, channel, params[1]))
+            print(data)
+            p.send_event(data)
     def irc_JOIN(self, prefix, params):
         """Handle the network telling us about a join."""
         for p in self.factory.listen_factory.protocols:
