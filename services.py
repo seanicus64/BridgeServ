@@ -203,7 +203,7 @@ class ListenProtocol(protocol.Protocol):
         
 
 
-class ListenFactory(Factory):
+class ListenFactory(ClientFactory):
     protocol = ListenProtocol
     protocols = []
     index = 1
@@ -294,8 +294,6 @@ class IRCProtocol(IRC):
     # this irc_ block's methods are what is run when a command comes from the IRC side.
     # so it takes the IRC commands from the network and relays it BACK to the client
     def irc_NICK(self, prefix, params):
-        print("NICK", params[0])
-        raise Exception("nick error")
         try:
             self.factory.userdict[prefix].nick = params[0]
         except:
@@ -375,9 +373,7 @@ class IRCProtocol(IRC):
         channel = params[0]
     def irc_PRIVMSG(self, prefix, params):
         """Handle the network telling us about a message."""
-        raise Exception("error")
         #TODO: handle user PRIVMSGs
-        print("PRIVMSG")
         for p in self.factory.listen_factory.protocols:
             data = {}
             data["type"] = "event"
@@ -389,13 +385,12 @@ class IRCProtocol(IRC):
                 if ch.name == channel:
                     channel_link_id = ch.link_id
                     break
-            if channel_link_id is not None:
+            if channel_link_id is None:
                 return
+
             data["channel_link_id"] = channel_link_id
             data["recipient"] = params[0]
             data["message"] = params[1]
-            print("PRIVMSG detected: {} {} {}".format(prefix, channel, params[1]))
-            print(data)
             p.send_event(data)
     def irc_JOIN(self, prefix, params):
         """Handle the network telling us about a join."""
