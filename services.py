@@ -45,7 +45,10 @@ class ListenProtocol(protocol.Protocol):
 
     def dataReceived(self, data):
         """Receive and react to data to the port."""
-        data = data.decode("ascii")
+        try:
+            data = data.decode("utf-8")
+        except:
+            return
         data = data.strip()
         lines = data.split("\n")
         for l in lines:
