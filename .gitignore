@@ -1,3 +1,4 @@
 *.pyc
 *.conf
 *.pid
+/.vs/BridgeServ/v15
