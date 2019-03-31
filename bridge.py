@@ -1,6 +1,7 @@
 import sys
 sys.path.append(".")
 from twisted.python import log
+from twisted.internet import reactor
 from services import IRCService, IRCFactory, ListenFactory, ListenService
 from twisted.application import service, internet
 import configparser
@@ -37,6 +38,10 @@ listen_tcp_service.setServiceParent(top_service)
 irc_factory.listen_factory = listen_factory
 listen_factory.irc_factory = irc_factory
 
-application = service.Application("IRC bridge")
-top_service.setServiceParent(application)
+if __name__ == '__main__':
+    print("Please run from twistd")
+else:
+    application = service.Application("IRC bridge")
+    top_service.setServiceParent(application)
+
 log.msg("Everything loaded correctly")
