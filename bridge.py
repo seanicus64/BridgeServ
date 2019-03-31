@@ -39,7 +39,9 @@ irc_factory.listen_factory = listen_factory
 listen_factory.irc_factory = irc_factory
 
 if __name__ == '__main__':
-    print("Please run from twistd")
+    reactor.listenTCP(bridge_port, listen_factory)
+    reactor.connectTCP(irc_server, irc_port, irc_factory)
+    reactor.run()
 else:
     application = service.Application("IRC bridge")
     top_service.setServiceParent(application)
